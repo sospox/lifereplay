@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.LCM.lifereplayapp.ui.navigation.ROUTES
+import com.LCM.lifereplayapp.utils.AudioPlayer
 import com.LCM.lifereplayapp.utils.FileUtils
 import com.LCM.lifereplayapp.viewmodel.UserViewModel
 
@@ -41,6 +42,13 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val userState by userViewModel.userState.collectAsState()
+    val audioPlayer = remember { AudioPlayer(context) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioPlayer.stop()
+        }
+    }
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -84,6 +92,17 @@ fun ProfileScreen(
         }
     }
     
+    // Music Launcher
+    val musicLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val internalUri = FileUtils.saveUriToInternalStorage(context, it, prefix = "music")
+            userViewModel.addMemory(MemoryType.MUSIC, contentUri = internalUri, text = "New Favorite Song")
+            Toast.makeText(context, "Music Added", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // Permission Launchers
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -231,11 +250,7 @@ fun ProfileScreen(
                 }
 
                 Button(
-                    onClick = { 
-                        // Simulate adding music (in a real app, use a file picker or API)
-                        userViewModel.addMemory(MemoryType.MUSIC, text = "New Favorite Song")
-                        Toast.makeText(context, "Music Added", Toast.LENGTH_SHORT).show()
-                    },
+                    onClick = { musicLauncher.launch("audio/*") },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -284,15 +299,25 @@ fun ProfileScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(Modifier.width(16.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = memory.type.name,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
                                 Text(
-                                    text = memory.text ?: memory.contentUri ?: "Memory ${memory.id.take(5)}",
+                                    text = memory.text ?: "Memory ${memory.id.take(5)}",
                                     style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            if (memory.type == MemoryType.IMAGE && memory.contentUri != null) {
+                                AsyncImage(
+                                    model = memory.contentUri,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                 )
                             }
                         }
