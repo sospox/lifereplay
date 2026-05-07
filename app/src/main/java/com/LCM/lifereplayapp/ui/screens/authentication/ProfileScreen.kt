@@ -283,7 +283,16 @@ fun ProfileScreen(
                 items(userState.memories) { memory ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        onClick = {
+                            if ((memory.type == MemoryType.VOICE || memory.type == MemoryType.MUSIC) && memory.contentUri != null) {
+                                try {
+                                    audioPlayer.play(Uri.parse(memory.contentUri))
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Error playing audio", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
