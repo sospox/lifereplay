@@ -2,13 +2,13 @@ package com.LCM.lifereplayapp.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.LCM.lifereplayapp.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 @Serializable
 data class Memory(
@@ -31,9 +31,6 @@ data class UserState(
     val isLoggedIn: Boolean = false,
     val memories: List<Memory> = emptyList()
 )
-
-import com.LCM.lifereplayapp.data.UserPreferencesRepository
-import kotlinx.coroutines.flow.collectLatest
 
 class UserViewModel(private val repository: UserPreferencesRepository) : ViewModel() {
     private val _userState = MutableStateFlow(UserState())
