@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.LCM.lifereplayapp.ui.navigation.ROUTES
+import com.LCM.lifereplayapp.utils.FileUtils
 import com.LCM.lifereplayapp.viewmodel.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,8 +51,9 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            userViewModel.addMemory(MemoryType.IMAGE, contentUri = it.toString())
-            selectedImageUri = it
+            val internalUri = FileUtils.saveUriToInternalStorage(context, it)
+            userViewModel.addMemory(MemoryType.IMAGE, contentUri = internalUri)
+            selectedImageUri = internalUri?.let { uriStr -> Uri.parse(uriStr) }
             capturedBitmap = null
         }
     }
@@ -61,13 +63,10 @@ fun ProfileScreen(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap: Bitmap? ->
         bitmap?.let {
-            // Note: Saving bitmap to a file or internal storage would be better for persistence,
-            // but for now we'll just show the latest captured in UI state.
-            // In a real app, we'd save it and get a URI.
+            val internalUri = FileUtils.saveBitmapToInternalStorage(context, it)
             capturedBitmap = it
-            selectedImageUri = null
-            // For the memory list, we'll need a URI. Let's assume we handle URI generation in a real app.
-            userViewModel.addMemory(MemoryType.IMAGE, text = "Captured Photo")
+            selectedImageUri = internalUri?.let { uriStr -> Uri.parse(uriStr) }
+            userViewModel.addMemory(MemoryType.IMAGE, contentUri = internalUri, text = "Captured Photo")
         }
     }
 
