@@ -8,14 +8,23 @@ class AudioPlayer(private val context: Context) {
     private var mediaPlayer: MediaPlayer? = null
 
     fun play(uri: Uri) {
-        stop()
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(context, uri)
-            prepare()
-            start()
-            setOnCompletionListener {
-                stop()
+        try {
+            stop()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(context, uri)
+                prepare()
+                start()
+                setOnCompletionListener {
+                    stop()
+                }
+                setOnErrorListener { _, _, _ ->
+                    stop()
+                    true
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            stop()
         }
     }
 

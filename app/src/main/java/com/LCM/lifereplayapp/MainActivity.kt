@@ -10,15 +10,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.LCM.lifereplayapp.data.UserPreferencesRepository
+import com.LCM.lifereplayapp.repositories.GenerativeAiRepository
 import com.LCM.lifereplayapp.ui.navigation.AppNavigation
 import com.LCM.lifereplayapp.ui.theme.LifereplayappTheme
 import com.LCM.lifereplayapp.viewmodel.UserViewModel
 
-class UserViewModelFactory(private val repository: UserPreferencesRepository) : ViewModelProvider.Factory {
+class UserViewModelFactory(
+    private val repository: UserPreferencesRepository,
+    private val aiRepository: GenerativeAiRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(UserViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return UserViewModel(repository) as T
+            return UserViewModel(repository, aiRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
@@ -30,7 +34,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val repository = UserPreferencesRepository(applicationContext)
-        val factory = UserViewModelFactory(repository)
+        val aiRepository = GenerativeAiRepository(applicationContext)
+        val factory = UserViewModelFactory(repository, aiRepository)
         
         setContent {
             LifereplayappTheme {

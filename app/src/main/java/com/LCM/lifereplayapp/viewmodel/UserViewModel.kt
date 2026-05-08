@@ -3,6 +3,7 @@ package com.LCM.lifereplayapp.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.LCM.lifereplayapp.data.UserPreferencesRepository
+import com.LCM.lifereplayapp.repositories.GenerativeAiRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,17 +30,44 @@ data class UserState(
     val name: String = "",
     val email: String = "",
     val isLoggedIn: Boolean = false,
-    val memories: List<Memory> = emptyList()
+    val memories: List<Memory> = emptyList(),
+    val aiGeneratedStory: String? = null
 )
 
-class UserViewModel(private val repository: UserPreferencesRepository) : ViewModel() {
+class UserViewModel(
+    private val repository: UserPreferencesRepository,
+    private val aiRepository: GenerativeAiRepository? = null
+) : ViewModel() {
     private val _userState = MutableStateFlow(UserState())
     val userState: StateFlow<UserState> = _userState.asStateFlow()
+
+    private val _isGeneratingStory = MutableStateFlow(false)
+    val isGeneratingStory: StateFlow<Boolean> = _isGeneratingStory.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.userStateFlow.collectLatest { savedState ->
                 _userState.value = savedState
+            }
+        }
+    }
+
+    fun generateAiStory() {
+        val memories = _userState.value.memories
+        if (memories.isEmpty() || aiRepository == null) return
+
+        viewModelScope.launch {
+            _isGeneratingStory.value = true
+            try {
+                val memoryPairs = memories.map { it.contentUri to it.text }
+                val story = aiRepository.generateStory(memoryPairs)
+                if (story != null) {
+                    updateState(_userState.value.copy(aiGeneratedStory = story))
+                }
+            } catch (e: Exception) {
+                // Log error
+            } finally {
+                _isGeneratingStory.value = false
             }
         }
     }

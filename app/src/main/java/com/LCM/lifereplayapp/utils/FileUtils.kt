@@ -25,6 +25,7 @@ object FileUtils {
             Uri.fromFile(file).toString()
         } catch (e: Exception) {
             e.printStackTrace()
+            if (file.exists()) file.delete()
             null
         }
     }
@@ -34,12 +35,14 @@ object FileUtils {
         val file = File(context.filesDir, fileName)
         return try {
             val outputStream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
-            outputStream.flush()
-            outputStream.close()
+            outputStream.use { output ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                output.flush()
+            }
             Uri.fromFile(file).toString()
         } catch (e: Exception) {
             e.printStackTrace()
+            if (file.exists()) file.delete()
             null
         }
     }
