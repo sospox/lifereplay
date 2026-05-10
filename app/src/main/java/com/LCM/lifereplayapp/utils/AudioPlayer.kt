@@ -3,6 +3,7 @@ package com.LCM.lifereplayapp.utils
 import android.content.Context
 import android.media.MediaPlayer
 import android.net.Uri
+import android.util.Log
 
 class AudioPlayer(private val context: Context) {
     private var mediaPlayer: MediaPlayer? = null
@@ -12,24 +13,37 @@ class AudioPlayer(private val context: Context) {
             stop()
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(context, uri)
-                prepare()
-                start()
+                
+                setOnPreparedListener {
+                    it.start()
+                }
+                
                 setOnCompletionListener {
                     stop()
                 }
-                setOnErrorListener { _, _, _ ->
+                
+                setOnErrorListener { _, what, extra ->
+                    Log.e("AudioPlayer", "MediaPlayer Error: what=$what extra=$extra")
                     stop()
                     true
                 }
+                
+                // Use prepareAsync to avoid blocking the UI thread (crucial for network URIs)
+                prepareAsync()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("AudioPlayer", "Failed to initialize MediaPlayer", e)
             stop()
         }
     }
 
     fun stop() {
-        mediaPlayer?.release()
-        mediaPlayer = null
+        try {
+            mediaPlayer?.release()
+        } catch (e: Exception) {
+            Log.e("AudioPlayer", "Error releasing MediaPlayer", e)
+        } finally {
+            mediaPlayer = null
+        }
     }
 }
