@@ -10,7 +10,10 @@ import com.LCM.lifereplayapp.ui.screens.authentication.HomePageScreen
 import com.LCM.lifereplayapp.ui.screens.authentication.LoginScreen
 import com.LCM.lifereplayapp.ui.screens.authentication.ProfileScreen
 import com.LCM.lifereplayapp.ui.screens.authentication.SignupScreen
+import com.LCM.lifereplayapp.ui.todo.TodoForm
 import com.LCM.lifereplayapp.viewmodel.UserViewModel
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun AppNavigation(
@@ -37,6 +40,13 @@ fun AppNavigation(
         }
         composable(ROUTES.Profile.name) {
             ProfileScreen(navController, userViewModel, modifier)
+        }
+        composable(ROUTES.TodoForm.name) {
+            TodoForm(
+                navController = navController,
+                innerPaddingValues = PaddingValues(0.dp),
+                modifier = modifier
+            )
         }
     }
 }

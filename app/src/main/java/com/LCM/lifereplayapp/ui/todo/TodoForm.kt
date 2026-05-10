@@ -49,7 +49,6 @@ import androidx.compose.ui.window.Popup
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.LCM.lifereplayapp.R
-import com.LCM.lifereplayapp.data.models.Todo
 import java.util.Date
 import java.util.Locale
 
@@ -63,11 +62,8 @@ fun TodoForm(
 ) {
     val progress by todoViewModel.uploadProgress.collectAsState()
 
-
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var media by remember { mutableStateOf("") }
-//    var progress by remember { mutableIntStateOf(0) }
 
     // date picker
     var showDatePicker by remember { mutableStateOf(false) }
@@ -78,11 +74,12 @@ fun TodoForm(
 
     // image picker:
     val context = LocalContext.current
-    val launcher = launchFilePicker(context , todoViewModel )
+    val launcher = launchFilePicker(context, todoViewModel)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
+            .padding(innerPaddingValues)
             .padding(vertical = 32.dp, horizontal = 16.dp)
             .fillMaxHeight()
     ) {
@@ -152,7 +149,7 @@ fun TodoForm(
                 }
             }
             Spacer(modifier = Modifier.padding(vertical = 8.dp))
-            Text("Progress: ${progress}%")
+            Text("Progress: $progress%")
         }
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
         if (showDatePicker) {
@@ -183,10 +180,10 @@ fun TodoForm(
                 todoViewModel.createPlace(
                     title = title,
                     description = description,
-                    dueDate = datePickerState.selectedDateMillis!!
+                    dueDate = datePickerState.selectedDateMillis ?: 0L
                 )
 
-                Toast.makeText(context, "${title} task created!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "$title task created!", Toast.LENGTH_SHORT).show()
 
                 description = ""
                 title = ""
@@ -221,8 +218,8 @@ fun getExtensionFromUri(context: Context, uri: Uri): String? {
 }
 
 @Composable
-fun launchFilePicker(context: Context,todoViewModel: TodoViewModel): ManagedActivityResultLauncher<Intent, ActivityResult> {
-    val launcher = rememberLauncherForActivityResult(
+fun launchFilePicker(context: Context, todoViewModel: TodoViewModel): ManagedActivityResultLauncher<Intent, ActivityResult> {
+    return rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         val uri = result.data?.data
@@ -241,17 +238,6 @@ fun launchFilePicker(context: Context,todoViewModel: TodoViewModel): ManagedActi
             }
         }
     }
-    return launcher
-}
-
-fun createReturnTodo(title: String, description: String, media: String, dueDate: Long): Todo {
-    var todo = Todo(
-        title = title,
-        description = description,
-        media = media,
-        dueDate = dueDate
-    )
-    return todo
 }
 
 fun convertMillisToDate(millis: Long): String {

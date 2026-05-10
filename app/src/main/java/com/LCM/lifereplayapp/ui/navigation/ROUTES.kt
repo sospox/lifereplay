@@ -5,5 +5,6 @@ enum class ROUTES {
     HomePage,
     Login,
     Profile,
-    Signup
+    Signup,
+    TodoForm
 }
