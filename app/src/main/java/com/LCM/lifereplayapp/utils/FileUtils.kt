@@ -47,6 +47,25 @@ object FileUtils {
         }
     }
 
+    fun getFileName(context: Context, uri: Uri): String? {
+        var name: String? = null
+        if (uri.scheme == "content") {
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) name = it.getString(nameIndex)
+                }
+            }
+        }
+        if (name == null) {
+            name = uri.path
+            val cut = name?.lastIndexOf('/') ?: -1
+            if (cut != -1) name = name?.substring(cut + 1)
+        }
+        return name
+    }
+
     private fun getFileExtension(context: Context, uri: Uri): String? {
         return if (uri.scheme == "content") {
             val mime = MimeTypeMap.getSingleton()

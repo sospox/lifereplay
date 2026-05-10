@@ -25,6 +25,8 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val isLoading by userViewModel.isLoading.collectAsState()
+    val authError by userViewModel.authError.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -68,6 +70,16 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            if (authError != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = authError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedTextField(
@@ -75,7 +87,8 @@ fun LoginScreen(
                 onValueChange = { email = it },
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -86,29 +99,48 @@ fun LoginScreen(
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = { 
-                    userViewModel.login(email)
-                    navController.navigate(ROUTES.Profile.name) 
+                    userViewModel.login(email, password) {
+                        navController.navigate(ROUTES.Profile.name) {
+                            popUpTo(ROUTES.Login.name) { inclusive = true }
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading && email.isNotEmpty() && password.isNotEmpty()
             ) {
-                Text("Login", fontSize = 18.sp)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Login", fontSize = 18.sp)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { navController.navigate(ROUTES.Signup.name) }) {
+            TextButton(
+                onClick = { navController.navigate(ROUTES.Signup.name) },
+                enabled = !isLoading
+            ) {
                 Text("Don't have an account? Sign Up")
             }
             
-            TextButton(onClick = { navController.navigate(ROUTES.HomePage.name) }) {
+            TextButton(
+                onClick = { navController.navigate(ROUTES.HomePage.name) },
+                enabled = !isLoading
+            ) {
                 Text("Back to Home")
             }
         }

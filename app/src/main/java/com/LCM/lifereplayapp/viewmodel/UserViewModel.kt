@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.LCM.lifereplayapp.data.UserPreferencesRepository
 import com.LCM.lifereplayapp.repositories.GenerativeAiRepository
+import com.LCM.lifereplayapp.repositories.AuthService
+import com.LCM.lifereplayapp.data.models.UserModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,13 +38,20 @@ data class UserState(
 
 class UserViewModel(
     private val repository: UserPreferencesRepository,
-    private val aiRepository: GenerativeAiRepository? = null
+    private val aiRepository: GenerativeAiRepository? = null,
+    private val authRepository: AuthService? = null
 ) : ViewModel() {
     private val _userState = MutableStateFlow(UserState())
     val userState: StateFlow<UserState> = _userState.asStateFlow()
 
     private val _isGeneratingStory = MutableStateFlow(false)
     val isGeneratingStory: StateFlow<Boolean> = _isGeneratingStory.asStateFlow()
+
+    private val _authError = MutableStateFlow<String?>(null)
+    val authError: StateFlow<String?> = _authError.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -59,8 +68,15 @@ class UserViewModel(
         viewModelScope.launch {
             _isGeneratingStory.value = true
             try {
-                val memoryPairs = memories.map { it.contentUri to it.text }
-                val story = aiRepository.generateStory(memoryPairs)
+                val memoryInputs = memories.map { 
+                    com.LCM.lifereplayapp.repositories.MemoryInput(
+                        type = it.type.name,
+                        uriString = it.contentUri,
+                        text = it.text,
+                        timestamp = it.timestamp
+                    )
+                }
+                val story = aiRepository.generateStory(_userState.value.name, memoryInputs)
                 if (story != null) {
                     updateState(_userState.value.copy(aiGeneratedStory = story))
                 }
@@ -78,19 +94,54 @@ class UserViewModel(
         updateState(_userState.value.copy(memories = updatedMemories))
     }
 
-    fun login(email: String) {
-        val name = email.split("@").firstOrNull()?.replaceFirstChar { it.uppercase() } ?: "User"
-        updateState(UserState(
-            name = name,
-            email = email,
-            isLoggedIn = true,
-            memories = _userState.value.memories
-        ))
+    fun login(email: String, password: String, onSuccess: () -> Unit) {
+        if (authRepository == null) return
+        viewModelScope.launch {
+            _isLoading.value = true
+            _authError.value = null
+            try {
+                authRepository.loginUser(UserModel(email = email, password = password))
+                val name = email.split("@").firstOrNull()?.replaceFirstChar { it.uppercase() } ?: "User"
+                updateState(_userState.value.copy(
+                    name = name,
+                    email = email,
+                    isLoggedIn = true
+                ))
+                onSuccess()
+            } catch (e: Exception) {
+                _authError.value = e.message ?: "Login failed"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
-    fun logout() {
+    fun signup(name: String, email: String, password: String, onSuccess: () -> Unit) {
+        if (authRepository == null) return
         viewModelScope.launch {
+            _isLoading.value = true
+            _authError.value = null
+            try {
+                authRepository.registerUser(UserModel(name = name, email = email, password = password))
+                updateState(_userState.value.copy(
+                    name = name,
+                    email = email,
+                    isLoggedIn = true
+                ))
+                onSuccess()
+            } catch (e: Exception) {
+                _authError.value = e.message ?: "Signup failed"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun logout(onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            authRepository?.logoutUser()
             repository.clearUserState()
+            onSuccess()
         }
     }
 

@@ -12,12 +12,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.LCM.lifereplayapp.ui.navigation.ROUTES
+import com.LCM.lifereplayapp.viewmodel.UserViewModel
 
 @Composable
-fun SignupScreen(navController: NavHostController, modifier: Modifier) {
+fun SignupScreen(
+    navController: NavHostController, 
+    userViewModel: UserViewModel,
+    modifier: Modifier
+) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val isLoading by userViewModel.isLoading.collectAsState()
+    val authError by userViewModel.authError.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize()
@@ -43,6 +50,16 @@ fun SignupScreen(navController: NavHostController, modifier: Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            if (authError != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = authError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedTextField(
@@ -50,7 +67,8 @@ fun SignupScreen(navController: NavHostController, modifier: Modifier) {
                 onValueChange = { name = it },
                 label = { Text("Full Name") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -60,7 +78,8 @@ fun SignupScreen(navController: NavHostController, modifier: Modifier) {
                 onValueChange = { email = it },
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -71,25 +90,41 @@ fun SignupScreen(navController: NavHostController, modifier: Modifier) {
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = { 
-                    // Navigate to Login after signup
-                    navController.navigate(ROUTES.Login.name) 
+                    userViewModel.signup(name, email, password) {
+                        navController.navigate(ROUTES.Profile.name) {
+                            popUpTo(ROUTES.Signup.name) { inclusive = true }
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading && name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()
             ) {
-                Text("Sign Up", fontSize = 18.sp)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Sign Up", fontSize = 18.sp)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { navController.navigate(ROUTES.Login.name) }) {
+            TextButton(
+                onClick = { navController.navigate(ROUTES.Login.name) },
+                enabled = !isLoading
+            ) {
                 Text("Already have an account? Login")
             }
         }

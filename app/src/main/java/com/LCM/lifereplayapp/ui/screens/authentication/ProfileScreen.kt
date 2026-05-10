@@ -22,7 +22,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,8 +62,9 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            val fileName = FileUtils.getFileName(context, it) ?: "Photo"
             val internalUri = FileUtils.saveUriToInternalStorage(context, it)
-            userViewModel.addMemory(MemoryType.IMAGE, contentUri = internalUri)
+            userViewModel.addMemory(MemoryType.IMAGE, contentUri = internalUri, text = "Gallery Photo: $fileName")
             selectedImageUri = internalUri?.let { uriStr -> Uri.parse(uriStr) }
             capturedBitmap = null
         }
@@ -101,9 +101,10 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            val fileName = FileUtils.getFileName(context, it) ?: "New Song"
             val internalUri = FileUtils.saveUriToInternalStorage(context, it, prefix = "music")
-            userViewModel.addMemory(MemoryType.MUSIC, contentUri = internalUri, text = "New Favorite Song")
-            Toast.makeText(context, "Music Added", Toast.LENGTH_SHORT).show()
+            userViewModel.addMemory(MemoryType.MUSIC, contentUri = internalUri, text = "Soundtrack: $fileName")
+            Toast.makeText(context, "Music Added: $fileName", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -156,16 +157,38 @@ fun ProfileScreen(
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Surface(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape),
-                color = MaterialTheme.colorScheme.primaryContainer
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                // ... (existing profile pic code)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = userState.name.ifEmpty { "User" },
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { 
+                            userViewModel.logout {
+                                navController.navigate(ROUTES.Login.name) {
+                                    popUpTo(0)
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                        }
+                    }
+                    Text(
+                        text = userState.email,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-
-            // ... (existing name/email/summary code)
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -208,8 +231,6 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ... (rest of the code: Voice/Music buttons, Memories list, etc.)
-
             if (voiceText.isNotEmpty()) {
                 Text(
                     text = "Last input: \"$voiceText\"",
@@ -219,9 +240,7 @@ fun ProfileScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Voice Input Button
+            // Voice/Music Buttons
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
@@ -269,16 +288,10 @@ fun ProfileScreen(
                     modifier = Modifier.padding(16.dp)
                 )
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 2000.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    userScrollEnabled = false
-                ) {
-                    items(userState.memories.reversed()) { memory ->
-                        MemoryItem(memory, audioPlayer, context)
-                    }
+                // Use a Column instead of LazyColumn inside a Scrollable Column to avoid nesting issues
+                userState.memories.reversed().forEach { memory ->
+                    MemoryItem(memory, audioPlayer, context)
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
@@ -294,26 +307,6 @@ fun ProfileScreen(
                 )
             ) {
                 Text("Change Password")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { 
-                    userViewModel.logout()
-                    // Logout: navigate back to Login and clear backstack
-                    navController.navigate(ROUTES.Login.name) {
-                        popUpTo(0)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                )
-            ) {
-                Text("Logout")
             }
         }
     }
@@ -370,14 +363,5 @@ fun MemoryItem(memory: com.LCM.lifereplayapp.viewmodel.Memory, audioPlayer: Audi
                 )
             }
         }
-    }
-}
-
-@Composable
-fun MemorySummaryItem(count: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Text(text = count.toString(), fontWeight = FontWeight.Bold)
-        Text(text = label, style = MaterialTheme.typography.labelSmall)
     }
 }

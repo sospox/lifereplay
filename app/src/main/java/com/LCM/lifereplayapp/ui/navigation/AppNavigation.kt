@@ -33,7 +33,7 @@ fun AppNavigation(
             ChangePasswordScreen(navController, modifier)
         }
         composable(ROUTES.Signup.name) {
-            SignupScreen(navController, modifier)
+            SignupScreen(navController, userViewModel, modifier)
         }
         composable(ROUTES.Profile.name) {
             ProfileScreen(navController, userViewModel, modifier)
