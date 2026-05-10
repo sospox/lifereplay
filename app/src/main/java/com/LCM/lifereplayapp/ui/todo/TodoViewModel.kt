@@ -25,29 +25,59 @@ class TodoViewModel: ViewModel() {
 
     val todo: StateFlow<Todo> get() = _todo
 
-    fun createPlace(title: String, description:String, dueDate: Long) {
+    private val _taskCreated = MutableStateFlow(false)
+    val taskCreated: StateFlow<Boolean> get() = _taskCreated
+
+    fun createTask(title: String, description: String, dueDate: Long) {
         viewModelScope.launch {
-            _todo.value = _todo.value.copy(
-                title = title,
-                description = description
-                ,dueDate = dueDate
-                ,isComplete = false)
-            todoRepository.createTask(_todo.value)
+            try {
+                _todo.value = _todo.value.copy(
+                    title = title,
+                    description = description,
+                    dueDate = dueDate,
+                    isComplete = false
+                )
+                val result = todoRepository.createTask(_todo.value)
+                if (result != null) {
+                    _taskCreated.value = true
+                    resetTodo()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
+    }
+
+    private fun resetTodo() {
+        _todo.value = Todo(
+            title = "",
+            media = "",
+            description = "",
+            isComplete = false,
+            dueDate = 0,
+        )
+        _uploadProgress.value = 0f
+    }
+
+    fun resetTaskCreated() {
+        _taskCreated.value = false
     }
 
     fun insertImage(fileName: String, fileBytes: ByteArray) {
         viewModelScope.launch {
-            todoRepository.insertImage(fileName, fileBytes).collect { result ->
-                when (result) {
-                    is UploadResult.Progress -> {
-                        _uploadProgress.value = result.percent
-                    }
-                    is UploadResult.Success -> {
-                        _todo.value = _todo.value.copy(media = result.url)
+            try {
+                todoRepository.insertImage(fileName, fileBytes).collect { result ->
+                    when (result) {
+                        is UploadResult.Progress -> {
+                            _uploadProgress.value = result.percent
+                        }
+                        is UploadResult.Success -> {
+                            _todo.value = _todo.value.copy(media = result.url)
+                        }
                     }
                 }
-
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

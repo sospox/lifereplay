@@ -65,9 +65,10 @@ class TodoRepository:TodoService {
         fileName: String,
         fileBytes: ByteArray
     ): Flow<UploadResult>{
-        val bucket = supabase.storage.from("todo/images")
+        val bucket = supabase.storage.from("todo")
+        val fullPath = "images/$fileName"
 
-        return bucket.uploadAsFlow(fileName, fileBytes)
+        return bucket.uploadAsFlow(fullPath, fileBytes)
             .map { status ->
                 when (status) {
                     is UploadStatus.Progress -> {
@@ -76,7 +77,7 @@ class TodoRepository:TodoService {
                     }
                     is UploadStatus.Success -> {
                         println("Upload successful!")
-                        UploadResult.Success(bucket.publicUrl(fileName))
+                        UploadResult.Success(bucket.publicUrl(fullPath))
                     }
                 }
             }

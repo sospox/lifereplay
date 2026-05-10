@@ -2,7 +2,7 @@ package com.LCM.lifereplayapp.ui.todo
 
 import android.content.Context
 import android.content.Intent
-import android.icu.text.SimpleDateFormat
+import java.text.SimpleDateFormat
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,12 +45,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.LCM.lifereplayapp.R
 import java.util.Date
 import java.util.Locale
 
@@ -61,19 +61,32 @@ fun TodoForm(
     modifier: Modifier
 ) {
     val progress by todoViewModel.uploadProgress.collectAsState()
+    val taskCreated by todoViewModel.taskCreated.collectAsState()
+    val context = LocalContext.current
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
+    // Navigation and reset logic
+    if (taskCreated) {
+        Toast.makeText(context, "Task created successfully!", Toast.LENGTH_SHORT).show()
+        todoViewModel.resetTaskCreated()
+        navController.popBackStack()
+    }
+
     // date picker
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
+    val isButtonEnabled by remember {
+        derivedStateOf {
+            title.isNotEmpty() && datePickerState.selectedDateMillis != null
+        }
+    }
     val taskDeadLineDate = datePickerState.selectedDateMillis?.let {
         convertMillisToDate(it)
     } ?: ""
 
     // image picker:
-    val context = LocalContext.current
     val launcher = launchFilePicker(context, todoViewModel)
 
     Column(
@@ -86,9 +99,7 @@ fun TodoForm(
         OutlinedTextField(
             value = title,
             label = { Text(text = "Title") },
-            onValueChange = {
-                title = it
-            },
+            onValueChange = { title = it },
             maxLines = 3,
             modifier = Modifier.fillMaxWidth()
         )
@@ -97,9 +108,7 @@ fun TodoForm(
         OutlinedTextField(
             value = description,
             label = { Text(text = "Description") },
-            onValueChange = {
-                description = it
-            },
+            onValueChange = { description = it },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -108,13 +117,14 @@ fun TodoForm(
             value = taskDeadLineDate,
             label = { Text(text = "Deadline") },
             onValueChange = { },
+            readOnly = true,
             trailingIcon = {
                 IconButton(
                     onClick = { showDatePicker = !showDatePicker }
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.DateRange,
-                        contentDescription = "Icon of Calender"
+                        contentDescription = "Icon of Calendar"
                     )
                 }
             },
@@ -129,19 +139,17 @@ fun TodoForm(
             Button(
                 onClick = {
                     val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                        type = "*/*" // or "image/*" or "video/*"
+                        type = "*/*"
                         addCategory(Intent.CATEGORY_OPENABLE)
                     }
-
                     launcher.launch(intent)
                 }
             ) {
-                Column {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(modifier = Modifier.padding(vertical = 2.dp))
                     Icon(
-                        painter = painterResource(R.drawable.camera),
-                        contentDescription = "Camera button",
-                        tint = Color.Unspecified
+                        imageVector = Icons.Filled.PhotoCamera,
+                        contentDescription = "Camera button"
                     )
                     Spacer(modifier = Modifier.padding(vertical = 2.dp))
                     Text(text = "Select Image")
@@ -149,7 +157,7 @@ fun TodoForm(
                 }
             }
             Spacer(modifier = Modifier.padding(vertical = 8.dp))
-            Text("Progress: $progress%")
+            Text("Progress: ${progress.toInt()}%")
         }
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
         if (showDatePicker) {
@@ -171,36 +179,24 @@ fun TodoForm(
                     )
                 }
             }
-
         }
 
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
         Button(
+            enabled = isButtonEnabled,
             onClick = {
-                todoViewModel.createPlace(
+                todoViewModel.createTask(
                     title = title,
                     description = description,
-                    dueDate = datePickerState.selectedDateMillis ?: 0L
+                    dueDate = datePickerState.selectedDateMillis!!
                 )
-
-                Toast.makeText(context, "$title task created!", Toast.LENGTH_SHORT).show()
-
-                description = ""
-                title = ""
             }
         ) {
-            Text(
-                text = "Create task"
-            )
+            Text(text = "Create task")
         }
     }
 }
 
-/*   IMAGE PICKER SECTION
-*  - get filename
-*  - get mime type
-*  - launch file picker
-* */
 fun getFileNameFromUri(context: Context, uri: Uri): String? {
     val cursor = context.contentResolver.query(uri, null, null, null, null)
     return cursor?.use {
@@ -211,7 +207,16 @@ fun getFileNameFromUri(context: Context, uri: Uri): String? {
     }
 }
 
-//  get mime type
+fun getFileSizeFromUri(context: Context, uri: Uri): Long {
+    val cursor = context.contentResolver.query(uri, null, null, null, null)
+    return cursor?.use {
+        val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
+        if (it.moveToFirst() && sizeIndex != -1) {
+            it.getLong(sizeIndex)
+        } else 0L
+    } ?: 0L
+}
+
 fun getExtensionFromUri(context: Context, uri: Uri): String? {
     val mimeType = context.contentResolver.getType(uri)
     return MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
@@ -224,17 +229,25 @@ fun launchFilePicker(context: Context, todoViewModel: TodoViewModel): ManagedAct
     ) { result ->
         val uri = result.data?.data
         if (uri != null) {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val fileBytes = inputStream?.readBytes()
-            val fileName = getFileNameFromUri(context, uri) ?: "upload.${
-                getExtensionFromUri(
-                    context,
-                    uri
-                ) ?: "dat"
-            }"
+            val fileSize = getFileSizeFromUri(context, uri)
+            val maxFileSize = 10L * 1024 * 1024 // 10MB limit
 
-            if (fileBytes != null) {
-                todoViewModel.insertImage(fileName, fileBytes)
+            if (fileSize > maxFileSize) {
+                Toast.makeText(context, "File is too large (max 10MB)", Toast.LENGTH_SHORT).show()
+            } else {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val fileBytes = inputStream?.use { it.readBytes() }
+                    val fileName = getFileNameFromUri(context, uri) ?: "upload.${
+                        getExtensionFromUri(context, uri) ?: "dat"
+                    }"
+
+                    if (fileBytes != null) {
+                        todoViewModel.insertImage(fileName, fileBytes)
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to read file", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

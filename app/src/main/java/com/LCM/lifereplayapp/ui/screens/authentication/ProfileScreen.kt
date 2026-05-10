@@ -172,7 +172,10 @@ fun ProfileScreen(
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        IconButton(onClick = { 
+                        IconButton(onClick = { navController.navigate(ROUTES.TodoForm.name) }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Todo")
+                    }
+                    IconButton(onClick = {
                             userViewModel.logout {
                                 navController.navigate(ROUTES.Login.name) {
                                     popUpTo(0)
